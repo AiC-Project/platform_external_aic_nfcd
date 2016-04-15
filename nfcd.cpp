@@ -27,9 +27,7 @@
 // Protobuff
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <sensors_packet.pb.h>
-
-
+//#include <sensors_packet.pb.h>
 
 /////NFC///////
 #include <hardware/hardware.h>
@@ -53,45 +51,45 @@
 #include "userial.h"
 
 
-using namespace google::protobuf::io;
-
-google::protobuf::uint32 readHdr(char *buf)
-{
-  google::protobuf::uint32 size;
-  google::protobuf::io::ArrayInputStream ais(buf,4);
-  CodedInputStream coded_input(&ais);
-  coded_input.ReadVarint32(&size);//Decode the HDR and get the size
-  ALOGE(" readHdr --   size of payload is %d", size);
-  return size;
-}
-
-void readBody(int csock,google::protobuf::uint32 siz)
-{
-  char c_status[255], c_latitude[255], c_longitude[255], c_altitude[255], c_bearing[255];
-
-  int bytecount;
-  sensors_packet payload;
-  char buffer [siz+4];//size of the payload and hdr
-  //Read the entire buffer including the hdr
-  if((bytecount = recv(csock, (void *) buffer, 4+siz, MSG_WAITALL))== -1){
-                fprintf(stderr, "Error receiving data %d\n", errno);
-        }
-  ALOGE(" readBody --  Second read byte count is %d",bytecount);
-  //Assign ArrayInputStream with enough memory
-  google::protobuf::io::ArrayInputStream ais( buffer,siz+4);
-  CodedInputStream coded_input(&ais);
-  //Read an unsigned integer with Varint encoding, truncating to 32 bits.
-  coded_input.ReadVarint32(&siz);
-  //After the message's length is read, PushLimit() is used to prevent the CodedInputStream
-  //from reading beyond that length.Limits are used when parsing length-delimited
-  //embedded messages
-  google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(siz);
-  //De-Serialize
-  payload.ParseFromCodedStream(&coded_input);
-  //Once the embedded message has been parsed, PopLimit() is called to undo the limit
-  coded_input.PopLimit(msgLimit);
-
-}
+// using namespace google::protobuf::io;
+//
+// google::protobuf::uint32 readHdr(char *buf)
+// {
+//   google::protobuf::uint32 size;
+//   google::protobuf::io::ArrayInputStream ais(buf,4);
+//   CodedInputStream coded_input(&ais);
+//   coded_input.ReadVarint32(&size);//Decode the HDR and get the size
+//   ALOGE(" readHdr --   size of payload is %d", size);
+//   return size;
+// }
+//
+// void readBody(int csock,google::protobuf::uint32 siz)
+// {
+//   char c_status[255], c_latitude[255], c_longitude[255], c_altitude[255], c_bearing[255];
+//
+//   int bytecount;
+//   sensors_packet payload;
+//   char buffer [siz+4];//size of the payload and hdr
+//   //Read the entire buffer including the hdr
+//   if((bytecount = recv(csock, (void *) buffer, 4+siz, MSG_WAITALL))== -1){
+//                 fprintf(stderr, "Error receiving data %d\n", errno);
+//         }
+//   ALOGE(" readBody --  Second read byte count is %d",bytecount);
+//   //Assign ArrayInputStream with enough memory
+//   google::protobuf::io::ArrayInputStream ais( buffer,siz+4);
+//   CodedInputStream coded_input(&ais);
+//   //Read an unsigned integer with Varint encoding, truncating to 32 bits.
+//   coded_input.ReadVarint32(&siz);
+//   //After the message's length is read, PushLimit() is used to prevent the CodedInputStream
+//   //from reading beyond that length.Limits are used when parsing length-delimited
+//   //embedded messages
+//   google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(siz);
+//   //De-Serialize
+//   payload.ParseFromCodedStream(&coded_input);
+//   //Once the embedded message has been parsed, PopLimit() is called to undo the limit
+//   coded_input.PopLimit(msgLimit);
+//
+// }
 
 
 static int start_server(uint16_t port) {
@@ -253,10 +251,8 @@ int main(int argc, char *argv[]) {
         SLOGD("NFC:: First read byte count is %d",bytecount);
         //readBody(sim_client,readHdr(inbuf) );
             {
-                data_len = zSiz ;
-
-                for( ii=0;ii<data_len; ii++)
-                SLOGD("nfcd - nci_data %x",nci_data[ii]);
+                for( ii=0;ii<zSiz; ii++)
+                 SLOGD("nfcd - nci_data %x",nci_data[ii]);
 
                 int siz = write( fd_local , nci_data, zSiz );
                 SLOGD("siz= %d ; go fool bufff !!!", siz);
