@@ -24,11 +24,16 @@ include $(call all-subdir-makefiles)
 #############################################
 include $(CLEAR_VARS)
 
-LOCAL_SRC_FILES := nfcd.cpp
+LOCAL_CPP_EXTENSION := .cc
 
- LOCAL_C_INCLUDES	:= bionic \
+LOCAL_SRC_FILES := nfcd.cc \
+	           nfc.proto
+
+LOCAL_PROTOC_FLAGS := --cpp_out=.
+
+LOCAL_C_INCLUDES	:= bionic \
  			   external/stlport/stlport \
- 			   device/aicVM/common/libandroidincloud \
+ 			   external/aic/libaicd \
  			   device/aicVM/common/libcppsensors_packet \
  			   external/protobuf/src \
    			   external/protobuf/src/google/protobuf \
@@ -46,7 +51,7 @@ IGNORED_WARNINGS := -Wno-sign-compare -Wno-unused-parameter -Wno-sign-promo -Wno
 LOCAL_CFLAGS := -O2 -fpermissive -Wmissing-field-initializers -DGOOGLE_PROTOBUF_NO_RTTI
 
 LOCAL_MODULE := nfcd
-LOCAL_SHARED_LIBRARIES := liblog libcutils libstlport libcppsensors_packet libnfc-nci
+LOCAL_SHARED_LIBRARIES := liblog libcutils libstlport libnfc-nci
 LOCAL_STATIC_LIBRARIES += libprotobuf-cpp-2.3.0-lite libprotobuf-cpp-2.3.0-full
 LOCAL_MODULE_TAGS := optional
 
