@@ -17,6 +17,7 @@
 
 #define NO_PROTOBUF
 #include "androidincloud.hpp"
+//#include "aic.h"
 
 #include <sys/types.h>
 
@@ -49,6 +50,69 @@
 #include <nfc/include/ndef_utils.h>
 
 #include "userial.h"
+
+#define NFCLOG(param, ...) {SLOGD("%s-"param, __FUNCTION__, ## __VA_ARGS__);}
+
+#define KEY_PREFIX "aicd"
+#define PROP_NFCD KEY_PREFIX".nfcd"
+
+#define PROP_ACT PROP_NFCD".action" //"cmd:name@addr#devclass"
+
+#define PROP_TYP PROP_NFCD".type"
+#define PROP_LAN PROP_NFCD".lang"
+#define PROP_TEX PROP_NFCD".text"
+#define PROP_TIT PROP_NFCD".tittle"
+
+
+void setBtdPropInit( const char *type, const char *lang, const char *text, const char *tittle){
+    property_set(PROP_TYP, type);
+    property_set(PROP_LAN, lang);
+    property_set(PROP_TEX, text);
+    property_set(PROP_TIT, tittle);
+}
+
+void setBtdProp(char *type, char *lang, char *text, char *tittle){
+
+    if (strcmp(PROP_TYP, type) ){
+        property_set(PROP_TYP, type);
+    }
+
+    if (strcmp(PROP_LAN, lang) ){
+        property_set(PROP_LAN, lang);
+    }
+
+    if (strcmp(PROP_TEX, text) ){
+        property_set(PROP_TEX, text);
+    }
+
+    if (strcmp(PROP_TIT, tittle) ){
+        property_set(PROP_TIT, tittle);
+    }
+    property_get(PROP_TYP, type, "1");
+    property_get(PROP_LAN, lang, "1");
+    property_get(PROP_TEX, text, "google.fr");
+    property_get(PROP_TIT, tittle, "default_tittle");
+
+    NFCLOG("%s  -  %s - %s - %s", PROP_TYP ,PROP_LAN, PROP_TEX ,PROP_TIT);
+}
+
+void splitAction( char *action, char *type, char *lang, char *text, char *tittle){
+
+    char strtemp[512] ;//= "0:0@google.fr#default_tittle";
+    const char ok1[2] = ":";
+    const char ok2[2] = "@";
+    const char ok3[2] = "#";
+
+    char *token;
+    strcpy(strtemp, action);
+    token = strtok(action, ok1);strcpy(type ,token);
+    token = strtok(NULL, ok2  );strcpy(lang,token);
+    token = strtok(NULL, ok3  );strcpy(text,token);
+    token = strtok(NULL, ok3  );strcpy(tittle,token);
+
+    strcpy(action, strtemp);
+    NFCLOG("%s  -  %s - %s - %s", type, lang, text, tittle);
+}
 
 void createBufNdef_TypeURI(UINT8 *strIN, int sizLen, UINT8 *strOUT){
 
@@ -389,9 +453,11 @@ int tcp_write_buff(int fd_local, unsigned char *data, int len)
 
 
 
-int main(int argc, char *argv[]) {
-    int server = -1; int sim_server = -1;
-    int client = -1; int sim_client = -1;
+void *hdl_player_conn(void * args){
+    NFCLOG("");
+
+    int *sim_server = (int*)args;
+    int sim_client = -1;
 
     char inbuf[256];
     int16_t cmd;
@@ -413,7 +479,6 @@ int main(int argc, char *argv[]) {
 
     SLOGE(" NFC  B \n");
 
-
     SLOGE(" NFC  C \n");
     tNFC_STATUS test_status;
 
@@ -421,13 +486,6 @@ int main(int argc, char *argv[]) {
     local_nfc_cmd.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     local_nfc_cmd.sin_family = AF_INET;
     local_nfc_cmd.sin_port = htons(UNFCD_PORT + 1 );
-//
-
-
-    if ((sim_server = start_server(22800)) == -1) {
-        SLOGE(" NFC Unable to create socket\n");
-        return 1;
-    }
 
     int flag = 1 ;
 
@@ -496,7 +554,103 @@ int main(int argc, char *argv[]) {
 
     }
 
-    return 0;
+    return NULL;
+}
 
+void *hdl_new_getprop()
+{
+    char action[512] = {'\0'};
+    char action_old[512] = {'\0'};
+
+    int cmd = -1;
+    int tmp=-1, i=-1;
+
+    char bd_name[512] ;
+    char bd_addr[512] ;
+    char bd_class[512] ;
+    uint8_t len = 0;
+    uint8_t typ;
+    int fd_local = 0;
+
+    void *buf = (void *) malloc (512 * sizeof(uint8_t));
+    unsigned char msg2[512] = {1};
+
+    char *type,  *lang,  *text,  *tittle;
+
+    type=(char*)malloc(512*sizeof(uint8_t));
+    text=(char*)malloc(512*sizeof(uint8_t));
+    lang=(char*)malloc(512*sizeof(uint8_t));
+    tittle=(char*)malloc(512*sizeof(uint8_t));
+
+    setBtdPropInit("1", "0F0F", "AIC", "640");
+        strcpy(action_old, "1:1@aic#incloud");
+    while(1){
+
+        property_get(PROP_ACT, action, "1:1@aic#incloud");
+        splitAction( action, type, lang, text, tittle);
+        setBtdProp( type, lang, text, tittle);
+
+        //cmd=atoi(s_cmd);
+
+        sleep(1);
+        NFCLOG(":: Waiting action=%s action_old=%s", action, action_old);
+        NFCLOG(":: Waiting :: %s %s %s %s", type, lang, text, tittle);
+
+        if ( strcmp(action, action_old) )
+        {  // Detect prop changing
+            strcpy(action_old, action);
+
+            UINT8 * msg = (UINT8*)calloc(1024, sizeof(UINT8));
+            UINT8 *msg2 = (UINT8*)calloc(1024, sizeof(UINT8));
+            int  msg_len ;
+            nfcPayload * nfcData = new nfcPayload;
+
+            nfcData->set_type((google::protobuf::uint32 ) atoi(type) );
+            nfcData->set_lang((google::protobuf::uint32 ) atoi(lang) );
+            nfcData->set_text(text);
+            nfcData->set_tittle(tittle);
+
+            msg_len =  codeNFC( nfcData , msg);
+            SLOGD("NFC:: reveivinf end data  %d" , msg_len);
+
+            vshort_sendata(msg,  msg_len, msg2);
+            int siz = tcp_write_buff( fd_local , msg2, msg_len +3 );
+            SLOGD("siz= %d ; go fool bufff !!!", siz);
+
+            vshort_actidata(msg,  msg_len, msg2);
+            siz = tcp_write_buff( fd_local , msg2, msg_len + 3 );
+            SLOGD("siz= %d ; go fool bufff !!!", siz);
+
+        }// end if cmd
+    }
+    return NULL;
+}//end hdl_new_getprop
+
+int main(int argc, char *argv[]) {
+    int sim_server = -1;
+
+    NFCLOG("\n:::::::::::::::::::::::::::::::::::::::::::::::::::");
+    NFCLOG(":: Btd app starting");
+
+    if ((sim_server = start_server(22800)) == -1)
+    {
+        NFCLOG(" BT Unable to create socket\n");
+        return -1;
+    }
+    pthread_t *thread0;
+    pthread_t *thread1;
+    thread0 = (pthread_t *)malloc(sizeof(pthread_t));
+    thread1 = (pthread_t *)malloc(sizeof(pthread_t));
+
+    NFCLOG(":: Btd app terminating");
+
+    int s  = pthread_create(thread0, NULL, &hdl_player_conn, (void*)&sim_server);
+    int s1 = pthread_create(thread1, NULL, &hdl_new_getprop, NULL);
+
+    pthread_join(*thread0, NULL);
+
+    NFCLOG(":: Btd app terminating");
+
+    return 0;
 }
 
