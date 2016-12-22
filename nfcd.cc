@@ -16,8 +16,7 @@
 #include <pthread.h>
 
 #define NO_PROTOBUF
-#include "androidincloud.hpp"
-//#include "aic.h"
+#include "aic.h"
 
 #include <sys/types.h>
 
